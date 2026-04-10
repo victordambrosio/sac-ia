@@ -276,7 +276,7 @@ function saveCreds() {
 function startOAuth() {
   const c = getCreds();
   if (!c.clientId) { showStatus('s3','s-error','Salve o Client ID primeiro.'); return; }
-  const url = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${c.clientId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=offline_access%20questions%20orders%20messages%20items%20users`;
+  const url = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${c.clientId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=offline_access%20questions%20orders%20messages%20items%20users`;
   window.location.href = url;
 }
 
