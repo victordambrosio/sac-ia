@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conectar Mercado Livre — SAC IA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0e0f11;--surface:#16181c;--surface2:#1e2026;--surface3:#252830;--border:#2a2d35;--border2:#353840;--accent:#ffe234;--accent2:#ffb800;--text:#f0f0f0;--text2:#9a9da6;--text3:#5a5d66;--green:#2ecc71;--green-bg:rgba(46,204,113,0.1);--red:#e74c3c;--red-bg:rgba(231,76,60,0.1);--blue:#4a9eff;--blue-bg:rgba(74,158,255,0.1);--amber:#f39c12;--radius:10px;--radius-sm:6px;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;}
+  .logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);letter-spacing:.05em;}
+  .logo span{color:var(--text3);}
+  .back-link{font-size:12px;color:var(--text2);text-decoration:none;margin-left:auto;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);}
+  .back-link:hover{background:var(--surface2);color:var(--text);}
+  .container{max-width:680px;margin:0 auto;padding:40px 24px;}
+  .page-title{font-size:22px;font-weight:600;margin-bottom:6px;}
+  .page-sub{font-size:13px;color:var(--text2);margin-bottom:32px;line-height:1.6;}
+
+  /* connected state */
+  .connected-card{background:var(--green-bg);border:1px solid rgba(46,204,113,.3);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:20px;display:none;}
+  .connected-card.show{display:block;}
+  .connected-card h2{font-size:18px;color:var(--green);margin-bottom:6px;}
+  .connected-card p{font-size:13px;color:var(--text2);}
+  .account-name{font-family:'DM Mono',monospace;font-size:14px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 16px;display:inline-block;margin:12px 0;}
+
+  /* steps */
+  .step{display:flex;gap:16px;margin-bottom:0;}
+  .step-left{display:flex;flex-direction:column;align-items:center;width:36px;flex-shrink:0;}
+  .step-num{width:36px;height:36px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;flex-shrink:0;}
+  .step-num.done{background:var(--green-bg);border-color:var(--green);color:var(--green);}
+  .step-num.active{background:rgba(255,226,52,.1);border-color:var(--accent);color:var(--accent);}
+  .step-num.pending{color:var(--text3);}
+  .step-line{width:1px;flex:1;min-height:16px;background:var(--border);margin:4px 0;}
+  .step-body{padding-bottom:28px;flex:1;padding-top:6px;}
+  .step-title{font-size:14px;font-weight:500;margin-bottom:4px;}
+  .step-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px;}
+
+  /* cards */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px;}
+  .card.highlight{border-color:var(--accent);background:rgba(255,226,52,.02);}
+  .card h3{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+
+  /* form */
+  .form-group{margin-bottom:14px;}
+  .form-group label{font-size:11px;color:var(--text3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;}
+  .form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);transition:border-color .15s;}
+  .form-input:focus{outline:none;border-color:var(--accent);}
+  .form-input::placeholder{color:var(--text3);}
+
+  /* redirect URI display */
+  .uri-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+  .uri-text{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);word-break:break-all;}
+  .copy-btn{font-family:'Sora',sans-serif;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border2);background:var(--surface3);color:var(--text3);cursor:pointer;white-space:nowrap;flex-shrink:0;}
+  .copy-btn:hover{color:var(--text);}
+
+  /* scopes */
+  .scope-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .scope{font-family:'DM Mono',monospace;font-size:11px;padding:3px 10px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;color:var(--text2);}
+  .scope.req{background:rgba(255,226,52,.08);border-color:rgba(255,226,52,.3);color:var(--accent);}
+
+  /* callout */
+  .callout{background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.6;margin:10px 0;}
+  .callout strong{color:var(--text);}
+
+  /* buttons */
+  .btn{font-family:'Sora',sans-serif;font-size:12px;font-weight:500;padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--border2);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+  .btn-primary{background:var(--accent);color:#000;border-color:transparent;font-weight:600;}
+  .btn-primary:hover{background:var(--accent2);}
+  .btn-ghost{background:transparent;color:var(--text2);}
+  .btn-ghost:hover{background:var(--surface2);color:var(--text);}
+  .btn-success{background:var(--green-bg);color:var(--green);border-color:rgba(46,204,113,.3);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* status */
+  .status-box{border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;line-height:1.6;margin-top:10px;display:none;}
+  .status-box.show{display:block;}
+  .s-success{background:var(--green-bg);border:1px solid rgba(46,204,113,.3);color:var(--green);}
+  .s-error{background:var(--red-bg);border:1px solid rgba(231,76,60,.3);color:var(--red);}
+  .s-info{background:var(--blue-bg);border:1px solid rgba(74,158,255,.3);color:var(--blue);}
+
+  .divider{border:none;border-top:1px solid var(--border);margin:24px 0;}
+  .faq-item{margin-bottom:14px;}
+  .faq-q{font-size:13px;font-weight:500;margin-bottom:3px;}
+  .faq-a{font-size:12px;color:var(--text2);line-height:1.6;}
+  code{color:var(--accent);font-family:'DM Mono',monospace;font-size:11px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">SAC<span>·</span>IA</div>
+  <span style="font-size:12px;color:var(--text3);">/ Conectar Mercado Livre</span>
+  <a class="back-link" href="index.html">← Voltar ao painel</a>
+</div>
+
+<div class="container">
+  <h1 class="page-title">Conectar sua conta do Mercado Livre</h1>
+  <p class="page-sub">Siga os 3 passos. Leva cerca de 10 minutos e é feito uma única vez. Depois, o app puxa suas perguntas automaticamente e envia respostas pela sua conta.</p>
+
+  <!-- CONNECTED STATE -->
+  <div class="connected-card" id="connectedCard">
+    <h2>✓ Conta conectada!</h2>
+    <p>Sua conta está autorizada:</p>
+    <div class="account-name" id="connectedNickname">—</div>
+    <p style="margin-top:4px;font-size:12px;">As perguntas da sua loja aparecem no painel em tempo real.</p>
+    <div style="display:flex;justify-content:center;gap:10px;margin-top:16px;">
+      <button class="btn btn-success" onclick="location.href='index.html'">→ Abrir painel SAC</button>
+      <button class="btn btn-ghost" onclick="disconnect()">Desconectar conta</button>
+    </div>
+  </div>
+
+  <div id="setupFlow">
+
+    <!-- PASSO 1 -->
+    <div class="step">
+      <div class="step-left"><div class="step-num active" id="n1">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-title">Criar o App no portal de desenvolvedores do ML</div>
+        <div class="step-desc">Gratuito. Você precisa de uma conta de vendedor no ML.</div>
+        <div class="card highlight">
+          <h3>📋 O que preencher</h3>
+          <div class="callout">Acesse <strong>developers.mercadolivre.com.br/devcenter</strong> → login com sua conta vendedor → <strong>"Criar aplicação"</strong></div>
+          <div class="form-group" style="margin-top:12px;">
+            <label>Nome da aplicação</label>
+            <div class="uri-box"><span class="uri-text">SAC IA - Atendimento</span><button class="copy-btn" onclick="cp('SAC IA - Atendimento',this)">copiar</button></div>
+          </div>
+          <div class="form-group">
+            <label>Redirect URI — cole EXATAMENTE este valor</label>
+            <div class="uri-box"><span class="uri-text" id="redirectUriDisplay">calculando...</span><button class="copy-btn" id="copyRedirectBtn" onclick="cpRedirect(this)">copiar</button></div>
+            <p style="font-size:11px;color:var(--text3);margin-top:4px;">Esta URL é gerada a partir do endereço do seu app hospedado. É para onde o ML vai te redirecionar após a autorização.</p>
+          </div>
+          <div class="form-group">
+            <label>Scopes — marque estes obrigatoriamente:</label>
+            <div class="scope-list">
+              <span class="scope req">questions:write</span>
+              <span class="scope req">orders:read</span>
+              <span class="scope req">messages:write</span>
+              <span class="scope req">offline_access</span>
+              <span class="scope">items:read</span>
+              <span class="scope">users:read</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="openML()">Abrir portal ML Developers ↗</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSO 2 -->
+    <div class="step">
+      <div class="step-left"><div class="step-num pending" id="n2">2</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-title">Cole suas credenciais aqui</div>
+        <div class="step-desc">Após criar o app, o ML mostra o App ID e o Client Secret na tela de detalhes.</div>
+        <div class="card">
+          <div class="form-group">
+            <label>App ID (Client ID)</label>
+            <input class="form-input" id="clientId" placeholder="1234567890123456" oninput="checkStep2()">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Client Secret</label>
+            <input class="form-input" id="clientSecret" type="password" placeholder="Seu client secret" oninput="checkStep2()">
+          </div>
+        </div>
+        <div class="callout"><strong>Segurança:</strong> Ficam salvos apenas no seu navegador (localStorage). Nunca enviados para servidores externos além do próprio ML.</div>
+        <button class="btn btn-primary" id="btnSave" onclick="saveCreds()" disabled>Salvar e continuar →</button>
+        <div class="status-box" id="s2"></div>
+      </div>
+    </div>
+
+    <!-- PASSO 3 -->
+    <div class="step">
+      <div class="step-left"><div class="step-num pending" id="n3">3</div></div>
+      <div class="step-body">
+        <div class="step-title">Autorizar o app na sua conta ML</div>
+        <div class="step-desc">Clique no botão, faça login no ML e aprove o acesso. O sistema completa a conexão automaticamente.</div>
+        <div class="card" id="authCard" style="opacity:.35;pointer-events:none;">
+          <h3>🔐 Autorização OAuth</h3>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Você será redirecionado para o Mercado Livre. Após aprovar, o sistema detecta o retorno e gera o token automaticamente — sem precisar copiar nenhum código.</p>
+          <button class="btn btn-primary" id="btnAuth" onclick="startOAuth()">Autorizar no Mercado Livre ↗</button>
+        </div>
+        <div class="status-box" id="s3"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card">
+      <h3>❓ Dúvidas frequentes</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px;">
+        <div class="faq-item">
+          <div class="faq-q">Precisa saber programar?</div>
+          <div class="faq-a">Não. É tudo feito por formulários visuais no portal do ML e aqui.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Tem custo?</div>
+          <div class="faq-a">A API do ML é gratuita para vendedores. O custo da IA (Claude) é de aproximadamente R$ 0,02 por resposta gerada.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">O token expira?</div>
+          <div class="faq-a">O access token expira em 6h, mas com o scope <code>offline_access</code> o sistema renova automaticamente. Você não precisa autorizar novamente.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">E se o Redirect URI der erro?</div>
+          <div class="faq-a">O valor exibido no Passo 1 já é gerado a partir da URL exata onde você está acessando este app. Use exatamente ele no campo do ML.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── REDIRECT URI (dinâmico) ──
+const REDIRECT_URI = window.location.origin + window.location.pathname.replace('conectar.html','') + 'callback.html';
+
+window.onload = () => {
+  document.getElementById('redirectUriDisplay').textContent = REDIRECT_URI;
+
+  // Load saved creds
+  const c = getCreds();
+  if (c.clientId) {
+    document.getElementById('clientId').value = c.clientId;
+    document.getElementById('clientSecret').value = c.clientSecret || '';
+    checkStep2();
+    setStep(2);
+    if (c.accessToken) setStep(3);
+  }
+  if (c.connected && c.nickname) showConnected(c.nickname);
+};
+
+function getCreds() { try { return JSON.parse(localStorage.getItem('mlCreds')||'{}'); } catch { return {}; } }
+function setCreds(obj) { localStorage.setItem('mlCreds', JSON.stringify({...getCreds(),...obj})); }
+
+function cp(text, btn) {
+  navigator.clipboard.writeText(text);
+  const o = btn.textContent; btn.textContent = 'copiado!';
+  setTimeout(()=>btn.textContent=o, 1500);
+}
+function cpRedirect(btn) { cp(REDIRECT_URI, btn); }
+
+function openML() {
+  window.open('https://developers.mercadolivre.com.br/devcenter','_blank');
+  setStep(2);
+}
+
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('n'+i);
+    if (i < n) { el.className='step-num done'; el.textContent='✓'; }
+    else if (i===n) { el.className='step-num active'; el.textContent=i; }
+    else { el.className='step-num pending'; el.textContent=i; }
+  });
+  if (n >= 3) {
+    const ac = document.getElementById('authCard');
+    ac.style.opacity='1'; ac.style.pointerEvents='auto';
+  }
+}
+
+function checkStep2() {
+  const ok = document.getElementById('clientId').value.trim().length > 5 &&
+             document.getElementById('clientSecret').value.trim().length > 5;
+  document.getElementById('btnSave').disabled = !ok;
+}
+
+function saveCreds() {
+  setCreds({
+    clientId: document.getElementById('clientId').value.trim(),
+    clientSecret: document.getElementById('clientSecret').value.trim()
+  });
+  setStep(3);
+  showStatus('s2','s-success','✓ Credenciais salvas no navegador.');
+}
+
+function startOAuth() {
+  const c = getCreds();
+  if (!c.clientId) { showStatus('s3','s-error','Salve o Client ID primeiro.'); return; }
+  const url = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${c.clientId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=offline_access%20questions%20orders%20messages%20items%20users`;
+  window.location.href = url;
+}
+
+function showConnected(nickname) {
+  document.getElementById('connectedCard').classList.add('show');
+  document.getElementById('connectedNickname').textContent = nickname;
+  document.getElementById('setupFlow').style.display = 'none';
+}
+
+function disconnect() {
+  if (!confirm('Desconectar conta do ML?')) return;
+  localStorage.removeItem('mlCreds');
+  location.reload();
+}
+
+function showStatus(id, cls, msg) {
+  const el = document.getElementById(id);
+  el.className = 'status-box show ' + cls;
+  el.textContent = msg;
+}
+</script>
+</body>
+</html>

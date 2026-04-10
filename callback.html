@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conectando... — SAC IA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0e0f11;--surface:#16181c;--surface2:#1e2026;
+    --border:#2a2d35;--border2:#353840;
+    --accent:#ffe234;--text:#f0f0f0;--text2:#9a9da6;--text3:#5a5d66;
+    --green:#2ecc71;--green-bg:rgba(46,204,113,0.1);
+    --red:#e74c3c;--red-bg:rgba(231,76,60,0.1);
+    --radius:10px;--radius-sm:6px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px;max-width:480px;width:100%;text-align:center;}
+  .logo{font-family:'DM Mono',monospace;font-size:14px;color:var(--accent);letter-spacing:.1em;margin-bottom:24px;}
+  .logo span{color:var(--text3);}
+  h2{font-size:18px;font-weight:600;margin-bottom:8px;}
+  p{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px;}
+  .status{border-radius:var(--radius-sm);padding:14px 16px;font-size:13px;margin:16px 0;line-height:1.6;}
+  .status-loading{background:rgba(255,226,52,.06);border:1px solid rgba(255,226,52,.2);color:var(--accent);}
+  .status-success{background:var(--green-bg);border:1px solid rgba(46,204,113,.3);color:var(--green);}
+  .status-error{background:var(--red-bg);border:1px solid rgba(231,76,60,.3);color:var(--red);}
+  .btn{font-family:'Sora',sans-serif;font-size:13px;font-weight:600;padding:10px 24px;border-radius:var(--radius-sm);border:none;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:8px;margin-top:8px;}
+  .btn-primary{background:var(--accent);color:#000;}
+  .btn-primary:hover{background:#ffb800;}
+  .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+  .btn-ghost:hover{background:var(--surface2);color:var(--text);}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,226,52,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .code-box{font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;color:var(--text2);word-break:break-all;text-align:left;margin:8px 0;}
+  .account-badge{font-family:'DM Mono',monospace;font-size:14px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 16px;display:inline-block;margin:12px 0;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">SAC<span>·</span>IA</div>
+  <div id="content">
+    <div class="spinner" style="margin:0 auto 16px;"></div>
+    <h2>Processando autorização...</h2>
+    <p>Aguarde enquanto conectamos sua conta do Mercado Livre.</p>
+    <div class="status status-loading">Lendo código de autorização...</div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const code = params.get('code');
+const error = params.get('error');
+
+function loadCreds() {
+  try { return JSON.parse(localStorage.getItem('mlCreds') || '{}'); } catch { return {}; }
+}
+function saveCreds(obj) {
+  const c = loadCreds();
+  localStorage.setItem('mlCreds', JSON.stringify({...c,...obj}));
+}
+
+async function run() {
+  if (error) {
+    showError('Autorização negada: ' + error + '. <a href="conectar.html">Tente novamente</a>');
+    return;
+  }
+  if (!code) {
+    showError('Código de autorização não encontrado na URL.');
+    return;
+  }
+
+  const creds = loadCreds();
+  if (!creds.clientId || !creds.clientSecret) {
+    showError('Credenciais não encontradas. <a href="conectar.html">Volte e cole o Client ID e Secret primeiro.</a>');
+    return;
+  }
+
+  updateStatus('loading', '⏳ Trocando código por token de acesso...');
+
+  try {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const res = await fetch('https://api.mercadolibre.com/oauth/token', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: creds.clientId,
+        client_secret: creds.clientSecret,
+        code,
+        redirect_uri: redirectUri
+      })
+    });
+    const data = await res.json();
+
+    if (!data.access_token) {
+      throw new Error(data.message || data.error_description || 'Erro desconhecido: ' + JSON.stringify(data));
+    }
+
+    saveCreds({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      tokenTime: Date.now()
+    });
+
+    updateStatus('loading', '✓ Token gerado! Buscando dados da conta...');
+
+    // Get user info
+    const userRes = await fetch('https://api.mercadolibre.com/users/me', {
+      headers: {'Authorization': 'Bearer ' + data.access_token}
+    });
+    const user = await userRes.json();
+    const nickname = user.nickname || user.email || 'Conta conectada';
+
+    saveCreds({ connected: true, nickname, userId: user.id });
+
+    showSuccess(nickname);
+
+  } catch(e) {
+    showError('Erro ao conectar: ' + e.message);
+  }
+}
+
+function updateStatus(type, msg) {
+  document.querySelector('.status').className = 'status status-' + type;
+  document.querySelector('.status').innerHTML = msg;
+}
+
+function showSuccess(nickname) {
+  document.getElementById('content').innerHTML = `
+    <div style="font-size:36px;margin-bottom:16px;">✓</div>
+    <h2 style="color:var(--green);">Conta conectada!</h2>
+    <p>Sua conta do Mercado Livre foi autorizada com sucesso.</p>
+    <div class="account-badge">${nickname}</div>
+    <p>As perguntas da sua loja agora aparecem no painel em tempo real.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:8px;">
+      <button class="btn btn-primary" onclick="window.location.href='index.html'">→ Abrir painel SAC</button>
+    </div>`;
+}
+
+function showError(msg) {
+  document.getElementById('content').innerHTML = `
+    <div style="font-size:36px;margin-bottom:16px;">✕</div>
+    <h2 style="color:var(--red);">Erro na conexão</h2>
+    <div class="status status-error">${msg}</div>
+    <button class="btn btn-ghost" onclick="window.location.href='conectar.html'">← Voltar e tentar novamente</button>`;
+}
+
+run();
+</script>
+</body>
+</html>

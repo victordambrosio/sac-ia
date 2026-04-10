@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAC Inteligente — Mercado Livre (API Real)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0e0f11;--surface:#16181c;--surface2:#1e2026;--surface3:#252830;
+    --border:#2a2d35;--border2:#353840;
+    --accent:#ffe234;--accent2:#ffb800;
+    --text:#f0f0f0;--text2:#9a9da6;--text3:#5a5d66;
+    --green:#2ecc71;--green-bg:rgba(46,204,113,0.1);
+    --red:#e74c3c;--red-bg:rgba(231,76,60,0.1);
+    --blue:#4a9eff;--blue-bg:rgba(74,158,255,0.1);
+    --amber:#f39c12;--amber-bg:rgba(243,156,18,0.1);
+    --radius:10px;--radius-sm:6px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+  .topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;position:sticky;top:0;z-index:100;}
+  .logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);letter-spacing:.05em;white-space:nowrap;}
+  .logo span{color:var(--text3);}
+  .topbar-stats{display:flex;gap:10px;margin-left:16px;flex:1;flex-wrap:wrap;}
+  .stat-pill{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:5px;white-space:nowrap;}
+  .dot{width:6px;height:6px;border-radius:50%;}
+  .dot-green{background:var(--green);box-shadow:0 0 6px var(--green);}
+  .dot-amber{background:var(--amber);}
+  .dot-red{background:var(--red);}
+  .topbar-nav{display:flex;gap:4px;}
+  .nav-btn{font-family:'Sora',sans-serif;font-size:12px;padding:5px 12px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;}
+  .nav-btn:hover{background:var(--surface2);color:var(--text);}
+  .nav-btn.active{background:var(--accent);color:#000;font-weight:600;}
+
+  .app-body{display:flex;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+  .sidebar{width:280px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .sidebar-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);}
+  .sidebar-header h3{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+  .filter-tabs{display:flex;gap:4px;}
+  .filter-tab{font-family:'Sora',sans-serif;font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;}
+  .filter-tab.active{background:var(--surface3);border-color:var(--border2);color:var(--text);}
+  .filter-tab .badge{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#000;border-radius:10px;font-size:9px;font-weight:700;min-width:16px;height:16px;padding:0 4px;margin-left:4px;}
+  .msg-list{flex:1;overflow-y:auto;padding:8px;}
+  .msg-list::-webkit-scrollbar{width:4px;}
+  .msg-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+  .msg-item{padding:10px 12px;border-radius:var(--radius);cursor:pointer;border:1px solid transparent;margin-bottom:4px;transition:all .15s;position:relative;}
+  .msg-item:hover{background:var(--surface2);}
+  .msg-item.active{background:var(--surface2);border-color:var(--border2);}
+  .msg-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--accent);border-radius:0 2px 2px 0;}
+  .msg-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .msg-buyer{font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:6px;}
+  .msg-time{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;}
+  .msg-preview{font-size:11px;color:var(--text2);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .msg-tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
+  .tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;}
+  .tag-prevenda{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(74,158,255,.2);}
+  .tag-posvenda{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(243,156,18,.2);}
+  .tag-reclamacao{background:var(--red-bg);color:var(--red);border:1px solid rgba(231,76,60,.2);}
+  .tag-auto{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,204,113,.2);}
+  .tag-revisao{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(243,156,18,.2);}
+  .tag-pendente{background:rgba(90,93,102,.2);color:var(--text3);border:1px solid var(--border);}
+  .unread-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+  .panel.active{display:flex;}
+  .detail-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .detail-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;}
+  .detail-header-left h2{font-size:14px;font-weight:600;margin-bottom:4px;}
+  .detail-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .detail-meta span{font-size:11px;color:var(--text2);}
+  .detail-actions{display:flex;gap:8px;flex-shrink:0;}
+  .btn{font-family:'Sora',sans-serif;font-size:12px;font-weight:500;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;}
+  .btn-ghost{background:transparent;color:var(--text2);}
+  .btn-ghost:hover{background:var(--surface2);color:var(--text);}
+  .btn-primary{background:var(--accent);color:#000;border-color:transparent;font-weight:600;}
+  .btn-primary:hover{background:var(--accent2);}
+  .btn-danger{background:transparent;color:var(--red);border-color:rgba(231,76,60,.3);}
+  .btn-success{background:var(--green-bg);color:var(--green);border-color:rgba(46,204,113,.3);}
+
+  .conversation{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
+  .conversation::-webkit-scrollbar{width:4px;}
+  .conversation::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+  .msg-bubble{max-width:70%;padding:10px 14px;border-radius:var(--radius);font-size:13px;line-height:1.6;}
+  .msg-bubble.buyer{background:var(--surface2);border:1px solid var(--border);align-self:flex-start;border-radius:var(--radius) var(--radius) var(--radius) 3px;}
+  .msg-bubble.ai-reply{background:rgba(255,226,52,.07);border:1px solid rgba(255,226,52,.2);align-self:flex-end;border-radius:var(--radius) var(--radius) 3px var(--radius);}
+  .msg-bubble.sent{background:var(--surface3);border:1px solid var(--border2);align-self:flex-end;border-radius:var(--radius) var(--radius) 3px var(--radius);}
+  .bubble-meta{font-size:10px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace;display:flex;align-items:center;gap:6px;}
+  .ai-badge{font-size:9px;padding:1px 6px;background:rgba(255,226,52,.15);color:var(--accent);border-radius:8px;border:1px solid rgba(255,226,52,.3);font-weight:600;}
+
+  .ai-suggestion{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--accent);padding:14px 16px;flex-shrink:0;}
+  .ai-suggestion-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .ai-label{font-size:11px;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:6px;letter-spacing:.05em;text-transform:uppercase;}
+  .ai-label::before{content:'◆';font-size:8px;}
+  .ai-confidence{font-family:'DM Mono',monospace;font-size:11px;color:var(--green);}
+  .ai-text{font-size:13px;color:var(--text);line-height:1.6;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;font-style:italic;}
+  .ai-text-area{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-family:'Sora',sans-serif;font-size:13px;color:var(--text);resize:vertical;min-height:60px;margin-bottom:10px;display:none;}
+  .ai-text-area:focus{outline:none;border-color:var(--accent);}
+  .ai-actions{display:flex;gap:8px;}
+
+  .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3);}
+  .empty-icon{font-size:40px;opacity:.3;}
+  .empty-state p{font-size:13px;}
+
+  /* connect banner */
+  .connect-banner{background:rgba(255,226,52,.06);border:1px solid rgba(255,226,52,.2);border-radius:var(--radius);padding:14px 18px;margin:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .connect-banner p{font-size:13px;color:var(--text2);line-height:1.5;}
+  .connect-banner strong{color:var(--accent);}
+
+  /* loading spinner */
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .thinking{display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(255,226,52,.05);border:1px solid rgba(255,226,52,.1);border-radius:var(--radius);font-size:11px;color:var(--accent);align-self:flex-end;}
+  .thinking-dots span{display:inline-block;width:4px;height:4px;background:var(--accent);border-radius:50%;margin:0 1px;animation:blink 1.2s infinite;}
+  .thinking-dots span:nth-child(2){animation-delay:.2s;}
+  .thinking-dots span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+  /* refresh btn */
+  .refresh-btn{font-family:'Sora',sans-serif;font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:5px;}
+  .refresh-btn:hover{background:var(--surface2);color:var(--text);}
+
+  /* KB */
+  .kb-panel{padding:24px;overflow-y:auto;flex:1;}
+  .kb-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  .kb-header h2{font-size:16px;font-weight:600;}
+  .kb-header p{font-size:12px;color:var(--text2);margin-top:2px;}
+  .kb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:20px;}
+  .kb-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .15s;}
+  .kb-card:hover{border-color:var(--border2);background:var(--surface2);}
+  .kb-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .kb-card h4{font-size:13px;font-weight:600;}
+  .kb-card-sku{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);background:var(--surface3);padding:2px 6px;border-radius:4px;}
+  .kb-card p{font-size:12px;color:var(--text2);line-height:1.5;}
+  .kb-specs{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;}
+  .kb-spec{font-size:10px;padding:2px 7px;background:var(--surface3);border-radius:4px;color:var(--text2);font-family:'DM Mono',monospace;}
+  .add-product-form{background:var(--surface);border:1px dashed var(--border2);border-radius:var(--radius);padding:20px;margin-top:4px;}
+  .add-product-form h3{font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text2);}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .form-group{display:flex;flex-direction:column;gap:4px;}
+  .form-group label{font-size:11px;color:var(--text3);}
+  .form-input,.form-textarea{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-family:'Sora',sans-serif;font-size:12px;color:var(--text);transition:border-color .15s;}
+  .form-input:focus,.form-textarea:focus{outline:none;border-color:var(--accent);}
+  .form-textarea{resize:vertical;min-height:70px;}
+
+  /* toast */
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:12px;color:var(--text);z-index:200;transform:translateY(60px);opacity:0;transition:all .3s;display:flex;align-items:center;gap:8px;}
+  .toast.show{transform:translateY(0);opacity:1;}
+  .toast.success{border-left:3px solid var(--green);}
+  .toast.info{border-left:3px solid var(--blue);}
+  .toast.error{border-left:3px solid var(--red);}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="topbar">
+  <div class="logo">SAC<span>·</span>IA</div>
+  <div class="topbar-stats" id="topbarStats">
+    <div class="stat-pill" id="connStatus"><span class="dot dot-red"></span> Desconectado</div>
+  </div>
+  <div class="topbar-nav">
+    <button class="nav-btn active" onclick="switchPanel('inbox',this)">Mensagens</button>
+    <button class="nav-btn" onclick="switchPanel('knowledge',this)">Base de Produto</button>
+    <button class="nav-btn" onclick="openConnectPage()">⚙ Conectar ML</button>
+  </div>
+</div>
+
+<div class="app-body">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3>Fila de atendimento</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="filterMsgs('all',this)">Todas</button>
+          <button class="filter-tab" onclick="filterMsgs('pendente',this)">Pendente <span class="badge" id="pendBadge">0</span></button>
+        </div>
+        <button class="refresh-btn" onclick="loadQuestions()" id="refreshBtn"><span id="refreshIcon">↻</span> atualizar</button>
+      </div>
+    </div>
+    <div class="msg-list" id="msgList">
+      <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">Conecte sua conta ML para ver as perguntas</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="panel active" id="panel-inbox">
+      <div id="connectBannerWrap"></div>
+      <div class="detail-pane">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">◈</div>
+          <p id="emptyMsg">Conecte sua conta para começar</p>
+        </div>
+        <div id="conversationView" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+          <div class="detail-header">
+            <div class="detail-header-left">
+              <h2 id="convTitle">—</h2>
+              <div class="detail-meta" id="convMeta"></div>
+            </div>
+            <div class="detail-actions" id="convActions"></div>
+          </div>
+          <div class="conversation" id="conversationBody"></div>
+          <div class="ai-suggestion" id="aiSuggestion" style="display:none;">
+            <div class="ai-suggestion-header">
+              <div class="ai-label">Sugestão da IA</div>
+              <div class="ai-confidence" id="aiConfidence"></div>
+            </div>
+            <div class="ai-text" id="aiText"></div>
+            <textarea class="ai-text-area" id="aiEditArea"></textarea>
+            <div class="ai-actions">
+              <button class="btn btn-success" onclick="approveReply()">✓ Aprovar e enviar</button>
+              <button class="btn btn-ghost" onclick="toggleEdit()">✎ Editar</button>
+              <button class="btn btn-danger" onclick="rejectSuggestion()">✕ Recusar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-knowledge">
+      <div class="kb-panel">
+        <div class="kb-header">
+          <div><h2>Base de Conhecimento dos Produtos</h2><p>A IA usa esses dados para responder com precisão.</p></div>
+          <button class="btn btn-primary" onclick="toggleAddForm()">+ Adicionar produto</button>
+        </div>
+        <div class="kb-grid" id="kbGrid"></div>
+        <div class="add-product-form" id="addProductForm" style="display:none;">
+          <h3>Novo produto</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Nome</label><input class="form-input" id="inp-name" placeholder="Ex: Tinta Epóxi 3,6L"></div>
+            <div class="form-group"><label>SKU</label><input class="form-input" id="inp-sku" placeholder="Ex: TIN-EXP-36"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Descrição detalhada para a IA</label><textarea class="form-textarea" id="inp-desc" placeholder="Composição, uso, rendimento, prazos, garantia..."></textarea></div>
+          <div class="form-row">
+            <div class="form-group"><label>Especificações (vírgula)</label><input class="form-input" id="inp-specs" placeholder="3,6L, Base água, Secagem 2h"></div>
+            <div class="form-group"><label>Prazo de entrega</label><input class="form-input" id="inp-prazo" placeholder="2-4 dias úteis"></div>
+          </div>
+          <button class="btn btn-primary" onclick="addProduct()">Salvar produto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let mlToken = null;
+let mlUserId = null;
+let mlNickname = null;
+let questions = [];       // raw ML questions
+let messages = [];        // processed for UI
+let currentMsgId = null;
+let currentFilter = 'all';
+let editingReply = false;
+let autoRefreshInterval = null;
+let kbProducts = [
+  {id:1,name:'Tinta Epóxi Industrial 3,6L',sku:'TIN-EXP-36',desc:'Tinta epóxi bicomponente de alta resistência para pisos industriais e garagens. Rendimento: 8-12m² por litro. Secagem ao toque em 2h, liberação para tráfego em 24h. Disponível em cinza, bege e grafite.',specs:['3,6L','Bicomponente','Secagem 2h','Piso industrial'],prazo:'2-3 dias úteis'},
+  {id:2,name:'Selante Poliuretano 600ml',sku:'SEL-PU-600',desc:'Selante e adesivo elástico para juntas, calafetação e colagem. Resistente a UV e chuva. Cura em 24-48h. Aplicação em concreto, metal, madeira e PVC.',specs:['600ml','Poliuretano','Resistente UV','Elástico'],prazo:'2-4 dias úteis'},
+  {id:3,name:'Primer Anticorrosivo 900ml',sku:'PRI-ANT-900',desc:'Primer à base de óxido de ferro para superfícies metálicas. Compatível com tintas esmalte e epóxi. Rendimento: 10-14m² por litro.',specs:['900ml','Óxido de ferro','Para metal'],prazo:'2-3 dias úteis'}
+];
+
+// ── INIT ──
+window.onload = () => {
+  loadCredentials();
+  renderKBGrid();
+};
+
+function loadCredentials() {
+  try {
+    const creds = JSON.parse(localStorage.getItem('mlCreds') || '{}');
+    if (creds.accessToken && creds.connected) {
+      mlToken = creds.accessToken;
+      mlUserId = creds.userId;
+      mlNickname = creds.nickname;
+      updateConnectionStatus(true);
+      loadQuestions();
+      startAutoRefresh();
+    } else {
+      updateConnectionStatus(false);
+      showConnectBanner();
+    }
+  } catch(e) {
+    updateConnectionStatus(false);
+  }
+}
+
+function updateConnectionStatus(connected) {
+  const el = document.getElementById('connStatus');
+  if (connected) {
+    el.innerHTML = `<span class="dot dot-green"></span> ${mlNickname || 'Conectado'}`;
+    document.getElementById('emptyMsg').textContent = 'Selecione uma pergunta para ver o atendimento';
+  } else {
+    el.innerHTML = `<span class="dot dot-red"></span> Desconectado`;
+  }
+}
+
+function showConnectBanner() {
+  document.getElementById('connectBannerWrap').innerHTML = `
+    <div class="connect-banner">
+      <p><strong>Conta ML não conectada.</strong> Conecte sua conta para puxar as perguntas reais dos seus anúncios.</p>
+      <button class="btn btn-primary" onclick="openConnectPage()">Conectar agora →</button>
+    </div>`;
+}
+
+function openConnectPage() {
+  window.open('conectar.html', '_blank');
+}
+
+// ── ML API ──
+async function refreshTokenIfNeeded() {
+  try {
+    const creds = JSON.parse(localStorage.getItem('mlCreds') || '{}');
+    if (!creds.tokenTime || !creds.expiresIn) return;
+    const elapsed = (Date.now() - creds.tokenTime) / 1000;
+    if (elapsed > creds.expiresIn - 300 && creds.refreshToken) {
+      // Refresh
+      const res = await fetch('https://api.mercadolibre.com/oauth/token', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: creds.clientId,
+          client_secret: creds.clientSecret,
+          refresh_token: creds.refreshToken
+        })
+      });
+      const data = await res.json();
+      if (data.access_token) {
+        mlToken = data.access_token;
+        const updated = {...creds, accessToken: data.access_token, refreshToken: data.refresh_token || creds.refreshToken, tokenTime: Date.now()};
+        localStorage.setItem('mlCreds', JSON.stringify(updated));
+      }
+    }
+  } catch(e) { /* silent */ }
+}
+
+async function mlGet(path) {
+  await refreshTokenIfNeeded();
+  const res = await fetch('https://api.mercadolibre.com' + path, {
+    headers: {'Authorization': 'Bearer ' + mlToken}
+  });
+  if (res.status === 401) { handleTokenExpired(); throw new Error('Token expirado'); }
+  return res.json();
+}
+
+async function mlPost(path, body) {
+  await refreshTokenIfNeeded();
+  const res = await fetch('https://api.mercadolibre.com' + path, {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + mlToken, 'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  if (res.status === 401) { handleTokenExpired(); throw new Error('Token expirado'); }
+  return res.json();
+}
+
+function handleTokenExpired() {
+  showToast('Token expirado — reconecte sua conta ML', 'error');
+  updateConnectionStatus(false);
+  showConnectBanner();
+}
+
+async function loadQuestions() {
+  if (!mlToken || !mlUserId) return;
+  const btn = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  icon.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  try {
+    // Fetch unanswered questions
+    const data = await mlGet(`/questions/search?seller_id=${mlUserId}&status=UNANSWERED&limit=50`);
+    const qs = data.questions || [];
+    questions = qs;
+    await processQuestions(qs);
+    updatePendingBadge();
+    showToast(`✓ ${qs.length} pergunta(s) carregada(s)`, 'success');
+  } catch(e) {
+    if (e.message !== 'Token expirado') showToast('Erro ao buscar perguntas: ' + e.message, 'error');
+  } finally {
+    icon.textContent = '↻';
+    btn.disabled = false;
+  }
+}
+
+async function processQuestions(qs) {
+  messages = await Promise.all(qs.map(async q => {
+    let itemTitle = q.item_id;
+    try {
+      const item = await mlGet(`/items/${q.item_id}?attributes=title`);
+      itemTitle = item.title || q.item_id;
+    } catch(e) {}
+
+    const dateStr = new Date(q.date_created).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return {
+      id: q.id,
+      buyer: q.from ? `comprador_${String(q.from.id).slice(-4)}` : 'comprador',
+      buyerId: q.from?.id,
+      itemId: q.item_id,
+      product: itemTitle,
+      text: q.text,
+      time: dateStr,
+      dateCreated: q.date_created,
+      status: 'pendente',
+      type: 'prevenda',
+      aiSuggestion: null,
+      aiConfidence: null,
+      mlRaw: q
+    };
+  }));
+  renderMsgList();
+}
+
+// ── RENDER MSG LIST ──
+function renderMsgList() {
+  const list = document.getElementById('msgList');
+  let filtered = messages;
+  if (currentFilter === 'pendente') filtered = filtered.filter(m => m.status === 'pendente');
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">${mlToken ? 'Nenhuma pergunta pendente 🎉' : 'Conecte sua conta ML'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(m => {
+    const statusTag = m.status === 'auto'
+      ? `<span class="tag tag-auto">respondido</span>`
+      : `<span class="tag tag-pendente">pendente</span>`;
+    return `
+      <div class="msg-item ${currentMsgId === m.id ? 'active' : ''}" onclick="openMsg('${m.id}')">
+        <div class="msg-item-top">
+          <div class="msg-buyer"><span class="unread-dot"></span>${m.buyer}</div>
+          <span class="msg-time">${m.time}</span>
+        </div>
+        <div class="msg-preview">${m.text}</div>
+        <div class="msg-tags"><span class="tag tag-prevenda">pré-venda</span>${statusTag}</div>
+      </div>`;
+  }).join('');
+}
+
+function filterMsgs(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderMsgList();
+}
+
+function updatePendingBadge() {
+  const pend = messages.filter(m => m.status === 'pendente').length;
+  document.getElementById('pendBadge').textContent = pend;
+}
+
+// ── OPEN MESSAGE ──
+async function openMsg(id) {
+  currentMsgId = id;
+  editingReply = false;
+  renderMsgList();
+  const msg = messages.find(m => m.id == id);
+  if (!msg) return;
+
+  document.getElementById('emptyState').style.display = 'none';
+  const cv = document.getElementById('conversationView');
+  cv.style.display = 'flex'; cv.style.flex = '1'; cv.style.flexDirection = 'column'; cv.style.overflow = 'hidden';
+
+  document.getElementById('convTitle').textContent = msg.buyer + ' — ' + msg.product;
+  document.getElementById('convMeta').innerHTML = `<span>🔵 Pré-venda</span><span>·</span><span>${msg.product}</span><span>·</span><span>${msg.time}</span>`;
+  document.getElementById('convActions').innerHTML = '';
+
+  const body = document.getElementById('conversationBody');
+  body.innerHTML = `
+    <div>
+      <div class="msg-bubble buyer">${msg.text}</div>
+      <div class="bubble-meta">${msg.buyer} · ${msg.time}</div>
+    </div>`;
+
+  // AI suggestion
+  const aiBox = document.getElementById('aiSuggestion');
+  if (msg.status === 'auto') {
+    aiBox.style.display = 'none';
+    if (msg.replySent) {
+      body.innerHTML += `
+        <div>
+          <div class="msg-bubble ai-reply">${msg.replySent}</div>
+          <div class="bubble-meta" style="justify-content:flex-end;"><span class="ai-badge">ENVIADO</span></div>
+        </div>`;
+    }
+  } else if (msg.aiSuggestion) {
+    showAISuggestion(msg.aiSuggestion, msg.aiConfidence);
+  } else {
+    aiBox.style.display = 'none';
+    await generateAIReply(msg, body);
+  }
+  body.scrollTop = body.scrollHeight;
+}
+
+async function generateAIReply(msg, body) {
+  const thinking = document.createElement('div');
+  thinking.className = 'thinking';
+  thinking.innerHTML = `<span class="ai-badge">IA</span> gerando resposta <span class="thinking-dots"><span></span><span></span><span></span></span>`;
+  body.appendChild(thinking);
+  body.scrollTop = body.scrollHeight;
+
+  // Find best matching product in KB
+  const productCtx = kbProducts.map(p => `Produto: ${p.name} (${p.sku}) | ${p.desc} | Especificações: ${p.specs.join(', ')} | Prazo: ${p.prazo}`).join('\n\n');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        system: `Você é um assistente de SAC para vendas no Mercado Livre. Responda perguntas de compradores de forma simpática, objetiva e profissional em português brasileiro. Use no máximo 3 frases curtas e diretas. Não use markdown, apenas texto simples. Se não souber a resposta exata, seja honesto e ofereça ajuda.\n\nBase de conhecimento dos produtos:\n${productCtx}`,
+        messages: [{role:'user', content:`Pergunta do comprador sobre o anúncio "${msg.product}":\n\n"${msg.text}"\n\nGere a melhor resposta para esse comprador.`}]
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Olá! Obrigado pelo contato. Pode me dar mais detalhes sobre sua dúvida?';
+    thinking.remove();
+    msg.aiSuggestion = reply;
+    msg.aiConfidence = '— gerado pela IA';
+    showAISuggestion(reply, msg.aiConfidence);
+  } catch(e) {
+    thinking.remove();
+    msg.aiSuggestion = 'Olá! Obrigado pelo contato. Vou verificar e já retorno para você!';
+    msg.aiConfidence = 'resposta padrão';
+    showAISuggestion(msg.aiSuggestion, msg.aiConfidence);
+  }
+  body.scrollTop = body.scrollHeight;
+}
+
+function showAISuggestion(text, confidence) {
+  const aiBox = document.getElementById('aiSuggestion');
+  aiBox.style.display = 'block';
+  document.getElementById('aiText').textContent = text;
+  document.getElementById('aiText').style.display = 'block';
+  document.getElementById('aiConfidence').textContent = confidence;
+  document.getElementById('aiEditArea').value = text;
+  document.getElementById('aiEditArea').style.display = 'none';
+  editingReply = false;
+}
+
+// ── REPLY ACTIONS ──
+async function approveReply() {
+  const msg = messages.find(m => m.id == currentMsgId);
+  if (!msg) return;
+  const text = editingReply
+    ? document.getElementById('aiEditArea').value
+    : document.getElementById('aiText').textContent;
+
+  if (!mlToken) {
+    showToast('Conta ML não conectada', 'error'); return;
+  }
+
+  const btnApprove = document.querySelector('.btn-success');
+  btnApprove.innerHTML = '<span class="spinner"></span> Enviando...';
+  btnApprove.disabled = true;
+
+  try {
+    // POST answer to ML API
+    const res = await mlPost(`/answers`, {
+      question_id: msg.id,
+      text: text
+    });
+
+    if (res.id || res.status === 'ANSWERED') {
+      msg.status = 'auto';
+      msg.replySent = text;
+      msg.aiSuggestion = null;
+      document.getElementById('aiSuggestion').style.display = 'none';
+
+      const body = document.getElementById('conversationBody');
+      body.innerHTML += `
+        <div>
+          <div class="msg-bubble ai-reply">${text}</div>
+          <div class="bubble-meta" style="justify-content:flex-end;"><span class="ai-badge">ENVIADO</span> ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>`;
+      body.scrollTop = body.scrollHeight;
+      renderMsgList();
+      updatePendingBadge();
+      showToast('✓ Resposta enviada no Mercado Livre!', 'success');
+    } else {
+      const errMsg = res.message || res.error || JSON.stringify(res);
+      showToast('Erro ao enviar: ' + errMsg, 'error');
+    }
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btnApprove.innerHTML = '✓ Aprovar e enviar';
+    btnApprove.disabled = false;
+  }
+}
+
+function toggleEdit() {
+  editingReply = !editingReply;
+  document.getElementById('aiText').style.display = editingReply ? 'none' : 'block';
+  document.getElementById('aiEditArea').style.display = editingReply ? 'block' : 'none';
+}
+
+function rejectSuggestion() {
+  const msg = messages.find(m => m.id == currentMsgId);
+  if (msg) msg.aiSuggestion = null;
+  document.getElementById('aiSuggestion').style.display = 'none';
+  showToast('Sugestão descartada.', 'info');
+}
+
+// ── AUTO REFRESH ──
+function startAutoRefresh() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+  autoRefreshInterval = setInterval(() => {
+    if (mlToken) loadQuestions();
+  }, 120000); // every 2 min
+}
+
+// ── KB ──
+function renderKBGrid() {
+  document.getElementById('kbGrid').innerHTML = kbProducts.map(p => `
+    <div class="kb-card">
+      <div class="kb-card-top"><h4>${p.name}</h4><span class="kb-card-sku">${p.sku}</span></div>
+      <p>${p.desc.substring(0,120)}...</p>
+      <div class="kb-specs">${p.specs.map(s=>`<span class="kb-spec">${s}</span>`).join('')}<span class="kb-spec">📦 ${p.prazo}</span></div>
+    </div>`).join('');
+}
+
+function toggleAddForm() {
+  const f = document.getElementById('addProductForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function addProduct() {
+  const name = document.getElementById('inp-name').value.trim();
+  const desc = document.getElementById('inp-desc').value.trim();
+  if (!name || !desc) { showToast('Preencha nome e descrição.', 'info'); return; }
+  kbProducts.push({
+    id: Date.now(),
+    name,
+    sku: document.getElementById('inp-sku').value.trim() || '—',
+    desc,
+    specs: document.getElementById('inp-specs').value.split(',').map(s=>s.trim()).filter(Boolean),
+    prazo: document.getElementById('inp-prazo').value.trim() || 'a definir'
+  });
+  renderKBGrid();
+  toggleAddForm();
+  ['inp-name','inp-sku','inp-desc','inp-specs','inp-prazo'].forEach(id => document.getElementById(id).value = '');
+  showToast('✓ Produto adicionado!', 'success');
+}
+
+// ── UTILS ──
+function switchPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sidebar').style.display = name === 'inbox' ? 'flex' : 'none';
+}
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
